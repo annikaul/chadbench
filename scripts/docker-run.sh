@@ -1,6 +1,6 @@
 #!/bin/bash
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-docker build -t noeticslam:latest $SCRIPT_DIR/..
+docker build -t chadbench:latest $SCRIPT_DIR/..
 
 CHAD_GPU=$1
 if [ -z "$1" ]; then
@@ -10,31 +10,31 @@ fi
 if [ $CHAD_GPU = "none" ]; then
     docker run -it \
         --rm \
-        --name noeticslam \
+        --name chadbench \
         --publish 7008:7008/udp \
         --publish 7009:7009/udp \
         --ulimit nofile=1024 \
         --volume $(pwd)/$(dirname "$0")/..:/root/repo/:Z \
-        noeticslam:latest
+        chadbench:latest
 elif [ $CHAD_GPU = "integrated" ]; then
     # with intel integrated gpu
     xhost +local:docker
     docker run -it \
         --rm \
-        --name noeticslam \
+        --name chadbench \
         --publish 7008:7008/udp \
         --publish 7009:7009/udp \
         --ulimit nofile=1024 \
         --env DISPLAY=${DISPLAY} \
         --volume "/tmp/.X11-unix:/tmp/.X11-unix:rw" \
         --volume $(pwd)/$(dirname "$0")/..:/root/repo/:Z \
-        noeticslam:latest
+        chadbench:latest
 elif [ $CHAD_GPU = "nvidia" ]; then
     # with nvidia gpu
     xhost +local:docker
     docker run -it \
         --rm \
-        --name noeticslam \
+        --name chadbench \
         --publish 7008:7008/udp \
         --publish 7009:7009/udp \
         --ulimit nofile=1024 \
@@ -47,7 +47,7 @@ elif [ $CHAD_GPU = "nvidia" ]; then
         --env NVIDIA_DRIVER_CAPABILITIES=all \
         --volume "/tmp/.X11-unix:/tmp/.X11-unix:rw" \
         --volume $(pwd)/$(dirname "$0")/..:/root/repo/:Z \
-        noeticslam:latest
+        chadbench:latest
 elif [ $CHAD_GPU = "amd" ]; then
     # with amd gpu
     # xhost +local:docker

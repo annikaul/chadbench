@@ -1,2 +1,2 @@
 #!/bin/bash
-docker exec -it noeticslam bash
+docker exec -it chadbench bash
