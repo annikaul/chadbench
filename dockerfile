@@ -6,7 +6,7 @@ RUN apt-get install -y build-essential cmake git ccache wget ninja-build gdb
 
 ## Dependencies
 # Core:
-RUN apt-get install -y ros-humble-pcl-ros python3-pip && pip install rosbags
+RUN apt-get install -y iputils-ping ros-humble-pcl-ros python3-pip && pip install rosbags
 # Ouster:
 RUN apt-get install -y ros-humble-rviz2 ros-humble-pcl-ros ros-humble-tf2-eigen libeigen3-dev libjsoncpp-dev libspdlog-dev libcurl4-openssl-dev python3-colcon-common-extensions
 # DLIO:

@@ -4,8 +4,8 @@ if [ -z "$1" ]; then
     exit -1
 fi
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-source /opt/ros/noetic/setup.bash
-source ${SCRIPT_DIR}/../devel/setup.bash
+source /opt/ros/humble/setup.bash
+source ${SCRIPT_DIR}/../install/setup.bash
 ros2 launch ouster_ros replay.launch.xml \
     bag_file:=${SCRIPT_DIR}/../$1 \
     viz:=${RVIZ_OUSTER}

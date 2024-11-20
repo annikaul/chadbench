@@ -4,11 +4,13 @@ if [ -z "$1" ]; then
     exit -1
 fi
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-source /opt/ros/noetic/setup.bash
-source ${SCRIPT_DIR}/../devel/setup.bash
+source /opt/ros/humble/setup.bash
+source ${SCRIPT_DIR}/../install/setup.bash
+BAG_PATH=${SCRIPT_DIR}/../$1
+rm -rf ${BAG_PATH}
 ros2 launch ouster_ros record.launch.xml \
     sensor_hostname:=${LIDAR_ADDR} \
-    bag_file:=${SCRIPT_DIR}/../$1 \
+    bag_file:=${BAG_PATH} \
     viz:=${RVIZ_OUSTER} \
     imu_port:=7008 \
     lidar_port:=7009
