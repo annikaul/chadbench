@@ -1,13 +1,16 @@
 FROM ros:humble-perception
 # set env var during docker build only
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update
-RUN apt-get upgrade -y
+RUN apt-get update && apt-get upgrade -y
 
 ## Dependencies
 # Core:
 RUN apt-get install -y build-essential cmake git ccache wget ninja-build gdb
 RUN apt-get install -y iputils-ping ros-humble-pcl-ros python3-pip && pip install rosbags
+# Vulkan:
+RUN wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
+RUN wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list http://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
+RUN apt update && apt install -y vulkan-sdk
 # Ouster:
 RUN apt-get install -y ros-humble-rviz2 ros-humble-pcl-ros ros-humble-tf2-eigen libeigen3-dev libjsoncpp-dev libspdlog-dev libcurl4-openssl-dev python3-colcon-common-extensions
 # DLIO:
