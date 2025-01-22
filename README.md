@@ -70,6 +70,16 @@ Replay Ouster bag file:
 bash scripts/ouster-replay.sh bags/<bagfile>
 ```
 
+
+## Research Project Notes:
+Currently the use of the git submodules does not work correctly for ros2. For this, currently after a new clone of the repo, run the following commands:
+```
+cd src/
+git clone -b ros2 --recursive https://github.com/ouster-lidar/ouster-ros.git
+git clone -b feature/ros2 --recursive https://github.com/vectr-ucla/direct_lidar_inertial_odometry.git
+```
+
+
 ## Authors
 
 Jan Kuhlmann

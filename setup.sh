@@ -25,6 +25,10 @@ sudo apt-get install -y libomp-dev libpcl-dev libeigen3-dev
 # # VDBFusion:
 # sudo apt-get install -y libgflags-dev
 
+# Lidardatasaver:
+sudo apt-get install libyaml-cpp-dev
+
+
 export ROSCONSOLE_FORMAT='[ROS${severity}]: ${message}'
 export LIDAR_ADDR=192.168.168.128
 export PCL_TOPIC=/ouster/points
