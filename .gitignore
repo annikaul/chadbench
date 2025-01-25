@@ -3,3 +3,4 @@ build/
 log/
 bags/
 *-metadata.json
+sampledata/

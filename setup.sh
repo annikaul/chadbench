@@ -10,6 +10,7 @@ sudo wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee
 sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list http://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
 sudo apt update && apt install -y vulkan-sdk
 # Ouster:
+sudo apt-get install -y ros-humble-tf2 ros-humble-tf2-eigen
 sudo apt-get install -y ros-humble-rviz2 ros-humble-pcl-ros ros-humble-tf2-eigen libeigen3-dev libjsoncpp-dev libspdlog-dev libcurl4-openssl-dev python3-colcon-common-extensions
 # DLIO:
 sudo apt-get install -y libomp-dev libpcl-dev libeigen3-dev
@@ -27,6 +28,10 @@ sudo apt-get install -y libomp-dev libpcl-dev libeigen3-dev
 
 # Lidardatasaver:
 sudo apt-get install libyaml-cpp-dev
+
+# Image saver
+sudo apt-get update
+sudo apt-get install -y ros-humble-usb-cam
 
 
 export ROSCONSOLE_FORMAT='[ROS${severity}]: ${message}'

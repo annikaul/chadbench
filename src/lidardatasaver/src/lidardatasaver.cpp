@@ -42,6 +42,8 @@ private:
 
     // Read point cloud data and save it to seperate files
     void callbackPointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
+        RCLCPP_INFO(this->get_logger(), "In callback ----");
+    
         // Create new files every 0.5 seconds
         if (nextTimeStamp > std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count() * 10) {
             return;
@@ -115,17 +117,30 @@ private:
     void setLidarTargetDir() {
         std::string baseTargetDir = fs::absolute(fs::path(__FILE__).parent_path().parent_path().parent_path().parent_path()).string() + "/sampledata/raw/";
     
+        RCLCPP_INFO(this->get_logger(), "BaseTargetDir: %s", baseTargetDir.c_str());
+        
+
         // Check if a directory was created in the last 5sek
         auto lastCheckTime = std::chrono::system_clock::now() - std::chrono::seconds(5);
+        // auto creationTime = std::chrono::time_point_cast<std::chrono::system_clock::duration>(fs::last_write_time(entry) - fs::file_time_type::clock::now() + std::chrono::system_clock::now());
+
+
+        RCLCPP_INFO(this->get_logger(), "--- %s", baseTargetDir.c_str());
         int i = 0;
         while (i < 200) {
+            
+        // RCLCPP_INFO(this->get_logger(), "Inside target dir %s", baseTargetDir.c_str());
             for (const auto& entry : fs::directory_iterator(baseTargetDir)) {
+
+        // RCLCPP_INFO(this->get_logger(), "Inside target dir %s", baseTargetDir.c_str());
                 if (entry.is_directory()) {
                     auto creationTime = std::chrono::time_point_cast<std::chrono::system_clock::duration>(fs::last_write_time(entry) - fs::file_time_type::clock::now() + std::chrono::system_clock::now());
                     
                     // If directory was created (by imagesaver), use that as target dir
                     if (creationTime > lastCheckTime) {
                         lidarTargetDir = entry.path().string() + "/lidar_00000000/";
+
+                        RCLCPP_INFO(this->get_logger(), "Data is saved to %s", lidarTargetDir.c_str());
                         return;
                     }
                 }
