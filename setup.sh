@@ -28,6 +28,7 @@ sudo apt-get install -y libomp-dev libpcl-dev libeigen3-dev
 
 # Lidardatasaver:
 sudo apt-get install libyaml-cpp-dev
+sudo apt install ros-humble-pcl-conversions ros-humble-sensor-msgs ros-humble-pcl-ros libyaml-cpp-dev
 
 # Image saver
 sudo apt-get update

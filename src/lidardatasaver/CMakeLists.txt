@@ -17,10 +17,13 @@ find_package(PCL REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
 # Include directories
-include_directories(
-  include
-  ${PCL_INCLUDE_DIRS}
-)
+# include_directories(
+#   include
+#   ${PCL_INCLUDE_DIRS}
+# )
+include_directories(${PCL_INCLUDE_DIRS})
+
+add_definitions(${PCL_DEFINITIONS})
 
 # Add executable
 add_executable(${PROJECT_NAME}_node src/lidardatasaver.cpp)
