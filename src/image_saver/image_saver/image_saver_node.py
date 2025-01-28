@@ -13,11 +13,11 @@ class ImageSaverNode(Node):
     def __init__(self):
         super().__init__('image_saver_node')
 
+        # Camera directory counter for directory name
+        self.nextCamDir = 0
+
         # create directory structure for data to be saved in
         self.createDirStructure()
-
-        # set next timestamp where image should be saved
-        self.nextTimeStamp = (round(time.time() * 2) / 2) + 0.5
 
         # listen to input from /image_raw and process it in callback function listener_callback
         self.subscription = self.create_subscription(
@@ -30,7 +30,7 @@ class ImageSaverNode(Node):
 
     def createDirStructure(self):
         # create new directory for data to be saved in
-        baseTargetDir = os.path.dirname(os.path.realpath(__file__ + "/../../../")) + '/sampledata/raw/'
+        baseTargetDir = os.path.dirname(os.path.realpath(__file__ + "/../../../../../../")) + '/sampledata/raw/'
         if not os.path.exists(baseTargetDir):
             os.makedirs(baseTargetDir)
 
@@ -178,22 +178,20 @@ class ImageSaverNode(Node):
 
 
     def listener_callback(self, msg):
-        # Create new files every 0.5sek
-        if (self.nextTimeStamp > time.time()):
-            return
-        
         # Create new directory for image to be saved in
-        self.imgTargetDir = self.cam0Dir + str(int(self.nextTimeStamp * 10)) + '/'
+        self.imgTargetDir = self.cam0Dir + str(self.nextCamDir).zfill(8) + '/'
+        # self.imgTargetDir = self.cam0Dir + str(int(self.nextTimeStamp * 10)) + '/'
         os.makedirs(self.imgTargetDir)
 
-        self.nextTimeStamp += 0.5
-        
         # write current camera image to specified folder
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         imageFile = self.imgTargetDir + 'image_00000000.png'
         imageMeta = self.imgTargetDir + 'meta_00000000.yaml'
 
         cv2.imwrite(imageFile, cv_image) 
+
+        # Current timestamp in miliseconds
+        timestamp = round(time.time() * 1000)
 
         # Create meta png yaml
         # TODO: An Kamera anpassen
@@ -202,7 +200,7 @@ class ImageSaverNode(Node):
             "lineAngle": 90, 
             "transformation": [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], 
             "pose_estimation": [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], 
-            "timestamp": -1, 
+            "timestamp": timestamp, 
             "entity": "sensor_data", 
             "type": "camera_image", 
             "resolution": [0, 0, 3]
@@ -217,13 +215,15 @@ class ImageSaverNode(Node):
             "lineAngle": 90, 
             "transformation": [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], 
             "pose_estimation": [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], 
-            "timestamp": -1, 
+            "timestamp": timestamp, 
             "entity": "sensor_data", 
             "type": "camera_image", 
             "resolution": [0, 0, 3]
         }
         with open(imageMeta, 'w') as yaml_file:
             yaml.dump(metaYamlImg, yaml_file, default_flow_style=True)
+
+        self.nextCamDir += 1
 
         self.get_logger().info('Image saved to folder ' + self.imgTargetDir)
 
