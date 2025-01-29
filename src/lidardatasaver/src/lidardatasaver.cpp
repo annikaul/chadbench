@@ -3,6 +3,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <rclcpp/qos.hpp>
 #include <yaml-cpp/yaml.h>
 #include <fstream>
 #include <filesystem>
@@ -21,16 +22,12 @@ public:
         // Set directory for files to be saved in
         setLidarTargetDir();
 
-        // Set first time stamp - new data should be saved every 0.5sek
-        // const auto currentTime = std::chrono::system_clock::now();
-        // nextTimeStamp = (std::round(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count() * 2) / 2.0) * 10 + 5;
-        // timestamp = (std::round(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count() * 2) / 2.0);
-
-
-        // listen to input from /ouster/points (send via script ouster-stream.sh) and process it in callback function callbackPointCloud
+        // Add subscriber for point cloud data
         sub_pcl = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-            "/ouster/points", 10,
-            std::bind(&LidarDatasaver::callbackPointCloud, this, std::placeholders::_1));
+            "/ouster/points",
+            rclcpp::SensorDataQoS(),
+            std::bind(&LidarDatasaver::callbackPointCloud, this, std::placeholders::_1)
+        );
     }
 
     
@@ -38,31 +35,21 @@ public:
 private:
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_pcl;
     std::string lidarTargetDir;
-
-    // long long nextTimeStamp;
     std::ostringstream nextDirName;
 
     long long nextDirNr = 0;
-
     long long timestamp;
 
     // Read point cloud data and save it to seperate files
     void callbackPointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
-        // RCLCPP_INFO(this->get_logger(), "In callback ----");
-    
-        // Create new files every 0.5 seconds
-        // if (nextTimeStamp > std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count() * 10) {
-        //     return;
-        // }
-
         // Create new directory with meta.yaml
         nextDirName.str("");
-        // nextDirName << lidarTargetDir << nextTimeStamp << "/" ;
-        nextDirName << lidarTargetDir << nextDirNr++ << "/" ;
-        fs::create_directories(nextDirName.str());
-        createMetaYAML();
+        nextDirName << lidarTargetDir << std::setw(8) << std::setfill('0') << nextDirNr << "/" ;
+        nextDirNr++;
 
-        // nextTimeStamp += 5;
+        fs::create_directories(nextDirName.str());
+        timestamp = (std::round(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count() * 2) / 2.0);
+        createMetaYAML();
 
         // Get data of sensor
         pcl::PointCloud<pcl::PointXYZI> cloud;
@@ -72,6 +59,9 @@ private:
         // Create .data file data
         std::ofstream dataFileIntensities(nextDirName.str() + "intensities.data", std::ios::binary);
         std::ofstream dataFilePoints(nextDirName.str() + "points.data", std::ios::binary);
+        
+        // TODO: add Header to .data files
+        
         for (const auto& point : cloud.points) {
             float intensities = point.intensity;
             dataFileIntensities.write(reinterpret_cast<const char*>(&intensities), sizeof(float));
@@ -82,13 +72,11 @@ private:
         dataFileIntensities.close();
         dataFilePoints.close();
 
-        timestamp = (std::round(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count() * 2) / 2.0);
-
+        int amountPoints = cloud.height * cloud.width;
+    
         // Create yaml for data
-        createYAML("intensities.yaml", "intensities", "channel", "float", "[59463419, 1]");
-        createYAML("points.yaml", "points", "channel", "float", "[59463419, 3]");
-
-        RCLCPP_INFO(this->get_logger(), "Saved data to directory %s", nextDirName.str().c_str());
+        createYAML("intensities.yaml", "intensities", "channel", "float", "[" + std::to_string(amountPoints) + ", 1]");
+        createYAML("points.yaml", "points", "channel", "float", "[" + std::to_string(amountPoints) + ", 3]");
     
         // TODO: weiter dateien erstellen -> welche Werte werden benötigt?
     }
@@ -115,7 +103,6 @@ private:
     void createMetaYAML() {
         std::ofstream outFile(nextDirName.str() + "meta.yaml");
         if (outFile.is_open()) {
-            // outFile << "{fov: {phiIncrement: 0.02500000037252903, phiStart: 0, phiStop: 360, thetaIncrement: 0.02471923828125, thetaStart: 30, thetaStop: 130}, programName: 1200 kHz, shock_detected: false, shock_factor: 2.0385180015479287, start_time: -1, entity: sensor_data, type: scan, end_time: -1, num_points: 1665406919, pose_estimation: [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], transformation: [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]}";
             outFile << "{fov: {phiIncrement: 0.02500000037252903, phiStart: 0, phiStop: 360, thetaIncrement: 0.02471923828125, thetaStart: 30, thetaStop: 130}, programName: 1200 kHz, shock_detected: false, shock_factor: 2.0385180015479287, start_time: " << timestamp << ", entity: sensor_data, type: scan, end_time: " << timestamp << ", num_points: 1665406919, pose_estimation: [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], transformation: [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]}";
             outFile.close();
         } else {
@@ -126,16 +113,10 @@ private:
     // Set directory where lidar data should be saved in (created by image_saver package)
     void setLidarTargetDir() {
         std::string baseTargetDir = fs::absolute(fs::path(__FILE__).parent_path().parent_path().parent_path().parent_path()).string() + "/sampledata/raw/";
-    
-        // RCLCPP_INFO(this->get_logger(), "BaseTargetDir: %s", baseTargetDir.c_str());
-        
 
         // Check if a directory was created in the last 5sek
         auto lastCheckTime = std::chrono::system_clock::now() - std::chrono::seconds(5);
-        // auto creationTime = std::chrono::time_point_cast<std::chrono::system_clock::duration>(fs::last_write_time(entry) - fs::file_time_type::clock::now() + std::chrono::system_clock::now());
 
-
-        // RCLCPP_INFO(this->get_logger(), "--- %s", baseTargetDir.c_str());
         int i = 0;
         while (i < 200) {
             for (const auto& entry : fs::directory_iterator(baseTargetDir)) {

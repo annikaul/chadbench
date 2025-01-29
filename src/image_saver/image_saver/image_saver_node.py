@@ -30,7 +30,7 @@ class ImageSaverNode(Node):
 
     def createDirStructure(self):
         # create new directory for data to be saved in
-        baseTargetDir = os.path.dirname(os.path.realpath(__file__ + "/../../../../../../")) + '/sampledata/raw/'
+        baseTargetDir = os.path.dirname(os.path.realpath(__file__ + "/../../../")) + '/sampledata/raw/'
         if not os.path.exists(baseTargetDir):
             os.makedirs(baseTargetDir)
 
@@ -225,7 +225,7 @@ class ImageSaverNode(Node):
 
         self.nextCamDir += 1
 
-        self.get_logger().info('Image saved to folder ' + self.imgTargetDir)
+        # self.get_logger().info('Image saved to folder ' + self.imgTargetDir)
 
 
 def main(args=None):
