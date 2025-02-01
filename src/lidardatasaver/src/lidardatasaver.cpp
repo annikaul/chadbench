@@ -63,16 +63,20 @@ private:
         // TODO: add Header to .data files
         
         for (const auto& point : cloud.points) {
-            float intensities = point.intensity;
-            dataFileIntensities.write(reinterpret_cast<const char*>(&intensities), sizeof(float));
+            // Filter out invalid data
+            if (!std::isnan(point.x) && !std::isnan(point.y) && !std::isnan(point.z)) {
+                valid_cloud.push_back(point);
+                
+                float intensities = point.intensity;
+                dataFileIntensities.write(reinterpret_cast<const char*>(&intensities), sizeof(float));
 
-            float coordinates[3] = {point.x, point.y, point.z};
-            dataFilePoints.write(reinterpret_cast<const char*>(coordinates), 3 * sizeof(float));
+                float coordinates[3] = {point.x, point.y, point.z};
+                dataFilePoints.write(reinterpret_cast<const char*>(coordinates), 3 * sizeof(float));
         }
         dataFileIntensities.close();
         dataFilePoints.close();
 
-        int amountPoints = cloud.height * cloud.width;
+        int amountPoints = valid_cloud.size();
     
         // Create yaml for data
         createYAML("intensities.yaml", "intensities", "channel", "float", "[" + std::to_string(amountPoints) + ", 1]");
