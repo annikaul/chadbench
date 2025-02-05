@@ -62,8 +62,8 @@ private:
         
 
         int amountPoints = cloud.points.size();
-        std::string headerIntensities = "{\"TYPE\": \"FLOAT\", \"SHAPE\": [" + std::to_string(amountPoints) + ", 1]};";
-        std::string headerPoints = "{\"TYPE\": \"FLOAT\", \"SHAPE\": [" + std::to_string(amountPoints) + ", 3]};";
+        std::string headerIntensities = "{\"TYPE\": \"FLOAT\", \"SHAPE\": [" + std::to_string(amountPoints) + ",1]};";
+        std::string headerPoints = "{\"TYPE\": \"FLOAT\", \"SHAPE\": [" + std::to_string(amountPoints) + ",3]};";
 
         dataFileIntensities.write(headerIntensities.c_str(), headerIntensities.size());
         dataFilePoints.write(headerPoints.c_str(), headerPoints.size());
@@ -75,10 +75,10 @@ private:
             float coordinates[3] = {point.x, point.y, point.z};
             dataFilePoints.write(reinterpret_cast<const char*>(coordinates), 3 * sizeof(float));
         }
+
         dataFileIntensities.close();
         dataFilePoints.close();
-
-    
+        
         // Create yaml for data
         createYAML("intensities.yaml", "intensities", "channel", "float", "[" + std::to_string(amountPoints) + ", 1]");
         createYAML("points.yaml", "points", "channel", "float", "[" + std::to_string(amountPoints) + ", 3]");
