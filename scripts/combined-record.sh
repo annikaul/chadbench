@@ -17,4 +17,3 @@ done
 scripts/ouster-stream.sh &
 scripts/startlidardatasaver.sh &
 scripts/startimagesaver.sh
-
