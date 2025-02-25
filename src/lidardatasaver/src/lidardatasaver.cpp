@@ -48,7 +48,7 @@ private:
         nextDirNr++;
 
         fs::create_directories(nextDirName.str());
-        timestamp = (std::round(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count() * 2) / 2.0);
+        timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         createMetaYAML();
 
         // Get data of sensor
