@@ -18,7 +18,7 @@ while ((i < 30)); do
     TIME_DIFF=$((CURRENT_TIME - LAST_MOD_TIME))
 
     if [ $TIME_DIFF -le 3 ]; then
-        TARGET_DIR="${LAST_DIR}/lidar_00000000/00000002"
+        TARGET_DIR="${LAST_DIR}/lidar_00000000/00000010"
         LAST_MOD_TIME=$(stat -c %Y "$TARGET_DIR")
         CURRENT_TIME=$(date +%s)
         TIME_DIFF=$((CURRENT_TIME - LAST_MOD_TIME))
