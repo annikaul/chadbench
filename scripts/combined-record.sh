@@ -15,6 +15,7 @@ while [ $ros2_daemon_status -ne 0 ]; do
 done
 
 scripts/ouster-stream.sh &
+sleep 5
 scripts/start-sync-saver.sh
 # scripts/startlidardatasaver.sh &
 # scripts/startimagesaver.sh

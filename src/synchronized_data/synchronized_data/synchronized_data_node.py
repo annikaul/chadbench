@@ -1,27 +1,30 @@
+import numpy as np
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image
 import cv2
 from cv_bridge import CvBridge
 import os 
 import time
 import shutil
 import yaml
-from sensor_msgs.msg import PointCloud2
-from message_filters import Subscriber, TimeSynchronizer
+from sensor_msgs.msg import Image, PointCloud2
+from message_filters import Subscriber, ApproximateTimeSynchronizer
 from rclpy.clock import Clock
-from rclpy.qos import QoSProfile, QoSReliabilityPolicy
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
+import sensor_msgs_py.point_cloud2 as pc2
+import struct
 
 
 # Node for saving images from a camera to a specified folder
 class SynchronizedDataNode(Node):
     def __init__(self):
         super().__init__('synchronized_data_node')
-        
-        qos = QoSProfile(depth=10, reliability=QoSReliabilityPolicy.SYSTEM_DEFAULT)
-        self.temp_pub = self.create_publisher(Image, '/image_raw', qos)
-        self.fluid_pub = self.create_publisher(PointCloud2, '/ouster/points', qos)
 
+        qos = QoSProfile(depth=10, reliability=QoSReliabilityPolicy.BEST_EFFORT, history=QoSHistoryPolicy.KEEP_LAST)
+        
+        # Publisher to re-publish lidar data with comparable timestamp
+        self.lidar_pub = self.create_publisher(PointCloud2, '/ouster/points/timed', qos)
+        
         # Camera directory counter for directory name
         self.nextDir = 0
 
@@ -30,15 +33,19 @@ class SynchronizedDataNode(Node):
 
         # listen to input from /image_raw and process it in callback function listener_callback
         self.image_sub = Subscriber(self, Image, '/image_raw', qos_profile=qos)
-        self.lidar_sub = Subscriber(self, PointCloud2, '/ouster/points', qos_profile=qos)
+        self.lidar_sub = Subscriber(self, PointCloud2, '/ouster/points/timed', qos_profile=qos)
         
-        self.sync = TimeSynchronizer([self.image_sub, self.lidar_sub], 10)
+        # Synchronize input of images and lidar data
+        self.sync = ApproximateTimeSynchronizer([self.image_sub, self.lidar_sub], queue_size=10, slop=0.1)
         self.sync.registerCallback(self.sync_callback)
-        # self.subscription
-        # self.bridge = CvBridge()
+        
+        self.create_subscription(PointCloud2, '/ouster/points', self.lidar_callback, qos)
+        
+        self.bridge = CvBridge()
+        
 
+    # Create new directory for data to be saved in
     def createDirStructure(self):
-        # create new directory for data to be saved in
         baseTargetDir = os.path.dirname(os.path.realpath(__file__ + "/../../../")) + '/sampledata/raw/'
         if not os.path.exists(baseTargetDir):
             os.makedirs(baseTargetDir)
@@ -180,15 +187,25 @@ class SynchronizedDataNode(Node):
             yaml.dump(metaYamlImgDir, yaml_file, default_flow_style=None)
 
         # create scan target directory
-        lidar0Dir = self.newDir + 'lidar_00000000/'
+        self.lidar0Dir = self.newDir + 'lidar_00000000/'
 
-        if not os.path.exists(lidar0Dir):
-            os.makedirs(lidar0Dir)
+        if not os.path.exists(self.lidar0Dir):
+            os.makedirs(self.lidar0Dir)
 
     
+    # Add comparable timestamp to lidar data
+    def lidar_callback(self, msg):
+        msg.header.stamp = self.get_clock().now().to_msg()
+        self.lidar_pub.publish(msg)
         
+    # Process synchronized data
+    def sync_callback(self, cam, lidar):
+        self.save_image(cam)
+        self.save_lidardata(lidar)
+        self.nextDir += 1
 
 
+    # Save camera image
     def save_image(self, msg):
         # Create new directory for image to be saved in
         self.imgTargetDir = self.cam0Dir + str(self.nextDir).zfill(8) + '/'
@@ -202,8 +219,8 @@ class SynchronizedDataNode(Node):
 
         cv2.imwrite(imageFile, cv_image) 
 
-        # Current timestamp in miliseconds
-        timestamp = round(time.time() * 1000)
+        # Timestamp in nanoseconds
+        timestamp = msg.header.stamp.nanosec
 
         # Create meta png yaml
         # TODO: An Kamera anpassen
@@ -235,16 +252,40 @@ class SynchronizedDataNode(Node):
         with open(imageMeta, 'w') as yaml_file:
             yaml.dump(metaYamlImg, yaml_file, default_flow_style=True)
 
-        # self.get_logger().info('Image saved to folder ' + self.imgTargetDir)
-      
+
+    # Save lidar data
     def save_lidardata(self, msg):
-        print("Getting Lidar data")
+        print("--- Getting Lidar data ---")
+        # Create new directory for lidar data to be saved in
+        self.lidarTargetDir = self.lidar0Dir + str(self.nextDir).zfill(8) + '/'
+        os.makedirs(self.lidarTargetDir)
         
-    def sync_callback(self, cam, lidar):
-        print("-- in sync callback ---")
-        self.save_image(cam)
-        self.save_lidardata(lidar)
-        self.nextDir += 1
+        # Timestamp in nanoseconds
+        timestamp = msg.header.stamp.nanosec
+        
+        # TODO: Add yaml files
+        
+        # Create pointcloud from incoming data
+        points = list(pc2.read_points(msg, field_names=["x", "y", "z", "intensity"], skip_nans=True))
+
+        amount_points = len(points)
+        
+        header_intensities = f'{{"TYPE": "FLOAT", "SHAPE": [{amount_points},1]}};'
+        header_points = f'{{"TYPE": "FLOAT", "SHAPE": [{amount_points},3]}};'
+
+        intensities_path = os.path.join(self.lidarTargetDir, "intensities.data")
+        points_path = os.path.join(self.lidarTargetDir, "points.data")
+
+        # Write data into .data files
+        with open(intensities_path, "wb") as data_file_intensities, open(points_path, "wb") as data_file_points:
+            # Add header
+            data_file_intensities.write(header_intensities.encode('utf-8'))
+            data_file_points.write(header_points.encode('utf-8'))
+            
+            for point in points:
+                x, y, z, intensity = point
+                data_file_intensities.write(struct.pack("f", intensity))
+                data_file_points.write(struct.pack("fff", x, y, z))
 
 
 def main(args=None):
