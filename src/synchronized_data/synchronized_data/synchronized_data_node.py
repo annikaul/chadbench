@@ -8,6 +8,10 @@ import time
 import shutil
 import yaml
 from sensor_msgs.msg import Image, PointCloud2
+from nav_msgs.msg import Path
+from tf2_msgs.msg import TFMessage
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 from rclpy.clock import Clock
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
@@ -24,6 +28,8 @@ class SynchronizedDataNode(Node):
         
         # Publisher to re-publish lidar data with comparable timestamp
         self.lidar_pub = self.create_publisher(PointCloud2, '/ouster/points/timed', qos)
+        self.lidar_img_pub = self.create_publisher(Image, '/ouster/reflec_image/timed', qos)
+        self.lidar_path_pub = self.create_publisher(Path, '/dlio/odom_node/path/timed', qos)
         
         # Camera directory counter for directory name
         self.nextDir = 0
@@ -34,12 +40,23 @@ class SynchronizedDataNode(Node):
         # listen to input from /image_raw and process it in callback function listener_callback
         self.image_sub = Subscriber(self, Image, '/image_raw', qos_profile=qos)
         self.lidar_sub = Subscriber(self, PointCloud2, '/ouster/points/timed', qos_profile=qos)
+        self.lidar_img_sub = Subscriber(self, Image, '/ouster/reflec_image/timed', qos_profile=qos)
+        self.lidar_path_sub = Subscriber(self, Path, '/dlio/odom_node/path/timed', qos_profile=qos)
         
         # Synchronize input of images and lidar data
-        self.sync = ApproximateTimeSynchronizer([self.image_sub, self.lidar_sub], queue_size=10, slop=0.1)
+        self.sync = ApproximateTimeSynchronizer([self.image_sub, self.lidar_sub, self.lidar_img_sub, self.lidar_path_sub], queue_size=10, slop=0.1)
         self.sync.registerCallback(self.sync_callback)
         
         self.create_subscription(PointCloud2, '/ouster/points', self.lidar_callback, qos)
+        self.create_subscription(Image, '/ouster/reflec_image', self.lidar_img_callback, qos)
+        self.create_subscription(Path, '/dlio/odom_node/path', self.lidar_path_callback, qos)
+        # self.create_subscription(TFMessage, '/tf', self.lidar_tf_callback, qos)
+        
+        # self.tf_buffer = Buffer()
+        # self.tf_listener = TransformListener(self.tf_buffer, self)
+        
+        
+        
         
         self.bridge = CvBridge()
         
@@ -57,7 +74,7 @@ class SynchronizedDataNode(Node):
             'crs': '',
             'coordinate_system': 'right-handed',
             'unit': 'meter',
-            'transformation': [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]],
+            'transformation': [[1, 0, 0, 0], [0, 1, 0, 0.035], [0, 0, 1, 0.035], [0, 0, 0, 1]],
             'name': ''
         }
         with open(baseTargetDir + 'meta.yaml', 'w') as yaml_file:
@@ -196,14 +213,39 @@ class SynchronizedDataNode(Node):
     # Add comparable timestamp to lidar data
     def lidar_callback(self, msg):
         msg.header.stamp = self.get_clock().now().to_msg()
+        # self.lidar_tf()
         self.lidar_pub.publish(msg)
         
+        
+    # Add comparable timestamp to lidar reflec image data
+    def lidar_img_callback(self, msg):
+        msg.header.stamp = self.get_clock().now().to_msg()
+        self.lidar_img_pub.publish(msg)
+        
+    # Add comparable timestamp to lidar path data
+    def lidar_path_callback(self, msg):
+        print("add timestamp to path")
+        msg.header.stamp = self.get_clock().now().to_msg()
+        self.lidar_path_pub.publish(msg)
+        
+        
     # Process synchronized data
-    def sync_callback(self, cam, lidar):
+    def sync_callback(self, cam, lidar, lidar_img, lidar_path):
         self.save_image(cam)
-        self.save_lidardata(lidar)
+        self.save_lidardata(lidar, lidar_path)
+        self.save_lidarimg(lidar_img)
+        
         self.nextDir += 1
 
+    def save_lidarimg(self, msg):
+        self.lidarTargetDir = self.lidar0Dir + str(self.nextDir).zfill(8) + '/'
+        if not os.path.exists(self.lidarTargetDir):
+            os.makedirs(self.lidarTargetDir)
+            
+        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        imageFile = self.lidarTargetDir + 'image_00000000.png'
+        
+        cv2.imwrite(imageFile, cv_image) 
 
     # Save camera image
     def save_image(self, msg):
@@ -217,7 +259,7 @@ class SynchronizedDataNode(Node):
         imageFile = self.imgTargetDir + 'image_00000000.png'
         imageMeta = self.imgTargetDir + 'meta_00000000.yaml'
 
-        cv2.imwrite(imageFile, cv_image) 
+        cv2.imwrite(imageFile, cv_image)
 
         # Timestamp in nanoseconds
         timestamp = msg.header.stamp.nanosec
@@ -254,16 +296,30 @@ class SynchronizedDataNode(Node):
 
 
     # Save lidar data
-    def save_lidardata(self, msg):
-        print("--- Getting Lidar data ---")
+    def save_lidardata(self, msg, path):
         # Create new directory for lidar data to be saved in
         self.lidarTargetDir = self.lidar0Dir + str(self.nextDir).zfill(8) + '/'
-        os.makedirs(self.lidarTargetDir)
+        if not os.path.exists(self.lidarTargetDir):
+            os.makedirs(self.lidarTargetDir)
         
         # Timestamp in nanoseconds
         timestamp = msg.header.stamp.nanosec
         
         # TODO: Add yaml files
+        for _, pose_stamped in enumerate(path.poses):
+            position = pose_stamped.pose.position
+            orientation = pose_stamped.pose.orientation
+
+            # self.get_logger().info("Position: x={}, y={}, z={}".format(position.x, position.y, position.z))
+            # self.get_logger().info("Orientation: x={}, y={}, z={}, w={}".format(orientation.x, orientation.y, orientation.z, orientation.w))
+
+            metaYamlRaw = {
+                'transformation': [position.x, position.y, position.z],
+                'rotation': [orientation.x, orientation.y, orientation.z, orientation.w],
+                'name': ''
+            }
+            with open(self.lidarTargetDir + 'meta.yaml', 'w') as yaml_file:
+                yaml.dump(metaYamlRaw, yaml_file, default_flow_style=None)
         
         # Create pointcloud from incoming data
         points = list(pc2.read_points(msg, field_names=["x", "y", "z", "intensity"], skip_nans=True))

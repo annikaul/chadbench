@@ -14,7 +14,9 @@ while [ $ros2_daemon_status -ne 0 ]; do
     ros2_daemon_status=$?
 done
 
-scripts/ouster-stream.sh &
+# scripts/dlio-launch.sh &
+scripts/ouster-record.sh bags/sync.bag &
+# scripts/ouster-stream.sh &
 sleep 5
 scripts/start-sync-saver.sh
 # scripts/startlidardatasaver.sh &
