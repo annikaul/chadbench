@@ -316,14 +316,17 @@ class SynchronizedDataNode(Node):
             metaYamlRaw = {
                 'transformation': [position.x, position.y, position.z],
                 'rotation': [orientation.x, orientation.y, orientation.z, orientation.w],
-                'name': ''
+                'name': '',
+                'start_time': timestamp
             }
             with open(self.lidarTargetDir + 'meta.yaml', 'w') as yaml_file:
                 yaml.dump(metaYamlRaw, yaml_file, default_flow_style=None)
         
         # Create pointcloud from incoming data
         points = list(pc2.read_points(msg, field_names=["x", "y", "z", "intensity"], skip_nans=True))
-
+        print("Amount points:", len(points))
+        print(points[0])
+        
         amount_points = len(points)
         
         header_intensities = f'{{"TYPE": "FLOAT", "SHAPE": [{amount_points},1]}};'
@@ -342,9 +345,41 @@ class SynchronizedDataNode(Node):
                 x, y, z, intensity = point
                 data_file_intensities.write(struct.pack("f", intensity))
                 data_file_points.write(struct.pack("fff", x, y, z))
+            
+            
+        # Write .yaml files for .data files
+        yaml_data =  {
+            'entity': 'channel',
+            'data_type': 'float',
+            'type': 'array',
+            'shape': [amount_points, 1],
+            'name': 'intensities'
+        }
+        
+        with open(self.lidarTargetDir + 'intensities.yaml', 'w') as yaml_file:
+            yaml.dump(yaml_data, yaml_file, default_flow_style=False, sort_keys=False)
 
+
+        yaml_data =  {
+            'entity': 'channel',
+            'data_type': 'float',
+            'type': 'array',
+            'shape': [amount_points, 3],
+            'name': 'points'
+        }
+        
+        with open(self.lidarTargetDir + 'points.yaml', 'w') as yaml_file:
+            yaml.dump(yaml_data, yaml_file, default_flow_style=False, sort_keys=False)
+            
+            
+# Set yaml flow of arrays (for dumping multidimensional arrays)
+def represent_list_as_flow(dumper, data):
+    return dumper.represent_sequence('tag:yaml.org,2002:seq', data, flow_style=True) 
 
 def main(args=None):
+    # Set yaml flow
+    yaml.add_representer(list, represent_list_as_flow)
+    
     # start node
     rclpy.init(args=args)
     synchronized_data = SynchronizedDataNode()

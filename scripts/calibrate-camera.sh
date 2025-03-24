@@ -22,12 +22,11 @@ while [ $ros2_daemon_status -ne 0 ]; do
     ros2_daemon_status=$?
 done
 
-scripts/ouster-stream.sh &
+scripts/ouster-record.sh bags/cal.bag &
 PID_OUSTER=&!
-scripts/startlidardatasaver.sh &
-PID_LIDAR=&!
-scripts/startimagesaver.sh &
-PID_IMAGE=&!
+sleep 5
+scripts/start-sync-saver.sh &
+PID_SYNC=&!
 
 # scripts/combined-record.sh &
 # PID_RECORD=$!
@@ -40,7 +39,7 @@ stop_data_registration() {
     # pkill -SIGTERM -P $$
     # kill -- -$$ 
 
-    kill -SIGTERM $PID_OUSTER $PID_LIDAR $PID_IMAGE
+    kill -SIGTERM $PID_OUSTER $PID_SYNC
     
     killros2
     pkill -f image_saver_nod
