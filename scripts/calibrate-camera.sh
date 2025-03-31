@@ -1,17 +1,9 @@
 #!/bin/bash
 
-set -m
-
 # Calibrate camera
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source /opt/ros/humble/setup.bash 
 source ${SCRIPT_DIR}/../install/setup.bash
-
-
-
-
-
-# trap stop_data_registration SIGINT SIGTERM EXIT
 
 # ensure ros2 daemon is running
 ros2 daemon start
@@ -23,35 +15,12 @@ while [ $ros2_daemon_status -ne 0 ]; do
 done
 
 scripts/ouster-record.sh bags/cal.bag &
-PID_OUSTER=&!
 sleep 5
 scripts/start-sync-saver.sh &
-PID_SYNC=&!
-
-# scripts/combined-record.sh &
-# PID_RECORD=$!
-
-
-stop_data_registration() {
-    echo "Stopping data registration for calibration"
-    ros2 daemon stop
-    # kill -- -$$
-    # pkill -SIGTERM -P $$
-    # kill -- -$$ 
-
-    kill -SIGTERM $PID_OUSTER $PID_SYNC
-    
-    killros2
-    pkill -f image_saver_nod
-    pkill -f usb_cam_node_ex
-    pkill -f lidardatasaver_
-    # exit 0
-}
-
-
 sleep 2
-declare -i i=0
 
+# Check if a new directory with the data was successfully created
+declare -i i=0
 while ((i < 30)); do
     # Latest directory in sampledata directory
     LAST_DIR=$(ls -td ${SCRIPT_DIR}/../sampledata/raw/* 2>/dev/null | head -n 1)
@@ -61,26 +30,14 @@ while ((i < 30)); do
     TIME_DIFF=$((CURRENT_TIME - LAST_MOD_TIME))
 
     if [ $TIME_DIFF -le 3 ]; then
-        TARGET_DIR="${LAST_DIR}/lidar_00000000/00000010"
+        TARGET_DIR="${LAST_DIR}/lidar_00000000/00000001"
+        echo "Looking for directory $TARGET_DIR ..."
         LAST_MOD_TIME=$(stat -c %Y "$TARGET_DIR")
         CURRENT_TIME=$(date +%s)
         TIME_DIFF=$((CURRENT_TIME - LAST_MOD_TIME))
         if [ $TIME_DIFF -le 3 ]; then
-            # Stop other scripts
-            # pkill -P $$
-            # pkill -P $$
-            # pkill -P $(pgrep -P $$)
-            # pkill -SIGTERM -P $$
-            # echo "Stopping data registration for calibration"
-            # kill -TERM $PID_OUSTER $PID_LIDAR $PID_IMAGE
-            # sleep 2
-
             echo "Stopping data registration for calibration"
-            stop_data_registration
-            # pkill -f lidardatasaver_
-            # pkill -f usb_cam_node_ex
-            # pkill -f image_saver_nod
-            # ros2 daemon stop
+            scripts/stop-processes.sh &
 
             echo "Calibrate camera with new data"
             python3 ${SCRIPT_DIR}/../../hyperspace/hyperspace/akresearchproject/scripts/calibration.py newdata
@@ -92,18 +49,8 @@ while ((i < 30)); do
 done
 
 # Stop other scripts
-# pkill -P $$
-
-# pkill --signal TERM -P $$
-# pkill --signal TERM -P $(pgrep -P $$)
-# pkill --signal -P $$
-# pkill --signal -P $(pgrep -P $$)
-# echo "Stopping data registration for calibration"
-# kill -TERM $PID_OUSTER $PID_LIDAR $PID_IMAGE
-# sleep 2
-stop_data_registration
-# pkill -SIGTERM -P $$
-# ros2 daemon stop
+echo "Stop ROS2 processes"
+scripts/stop-processes.sh &
 
 # Run camera calibration script (from hyperspace)
 echo "Calibrate camera with sampledata"

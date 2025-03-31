@@ -79,6 +79,8 @@ git clone -b ros2 --recursive https://github.com/ouster-lidar/ouster-ros.git
 git clone -b feature/ros2 --recursive https://github.com/vectr-ucla/direct_lidar_inertial_odometry.git
 ```
 
+For more information about the usage of the research project functionalities, go to the repository https://github.com/annikaul/researchproject.git.
+
 
 ## Authors
 

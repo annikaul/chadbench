@@ -16,8 +16,5 @@ done
 
 # scripts/dlio-launch.sh &
 scripts/ouster-record.sh bags/sync.bag &
-# scripts/ouster-stream.sh &
 sleep 5
 scripts/start-sync-saver.sh
-# scripts/startlidardatasaver.sh &
-# scripts/startimagesaver.sh
