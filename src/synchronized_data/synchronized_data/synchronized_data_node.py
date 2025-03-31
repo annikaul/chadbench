@@ -128,23 +128,11 @@ class SynchronizedDataNode(Node):
         
         
     # Process synchronized data
-    def sync_callback(self, cam, lidar, lidar_img, lidar_transformation):
+    def sync_callback(self, cam, lidar, lidar_transformation):
         self.save_image(cam)
         self.save_lidardata(lidar, lidar_transformation)
-        self.save_lidarimg(lidar_img)
         
         self.nextDir += 1
-
-
-    def save_lidarimg(self, msg):
-        self.lidarTargetDir = self.lidar0Dir + str(self.nextDir).zfill(8) + '/'
-        if not os.path.exists(self.lidarTargetDir):
-            os.makedirs(self.lidarTargetDir)
-            
-        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-        imageFile = self.lidarTargetDir + 'image_00000000.png'
-        
-        cv2.imwrite(imageFile, cv_image) 
 
     # Save camera image
     def save_image(self, msg):
